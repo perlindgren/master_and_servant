@@ -1,0 +1,11 @@
+[workspace]
+
+members = ["master", "servant"]
+
+# We are using edition 2021, so indicate workspace.resolver = "2"
+resolver = "2"
+
+# Not entirely sure why we can't have this in the member crates
+[profile.dev]
+debug = true
+lto = true
