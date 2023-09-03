@@ -1,3 +1,22 @@
 {
-  "cSpell.ignoreWords": ["IRDA"]
+  "cSpell.ignoreWords": [
+    "IRDA",
+    "Monotonics",
+    "PIOB",
+    "Prescaler",
+    "SUPC",
+    "Toggleable",
+    "UTMI",
+    "atsamx",
+    "bankb",
+    "blinky",
+    "eabihf",
+    "ehal",
+    "hclk",
+    "mainck",
+    "rprintln",
+    "rustc",
+    "slck",
+    "thumbv"
+  ]
 }
