@@ -560,6 +560,7 @@ dependencies = [
  "cortex-m-rtic",
  "heapless",
  "master_and_servant",
+ "nb 1.1.0",
  "panic-halt",
  "panic-rtt-target",
  "rtt-target",

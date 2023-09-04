@@ -1,29 +1,50 @@
-use std::io::Read;
-
-use master_and_servant::{Command, Msg};
+use master_and_servant::{Command, Message, Response};
 use serial2::SerialPort;
+use std::io::Read;
 use std::mem::{size_of, size_of_val};
 
-// On Windows, use something like "COM1".
-// For COM ports above COM9, you need to use the win32 device namespace, for example "\\.\COM10" (or "\\\\.\\COM10" with string escaping).
-// For more details, see: https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#win32-device-namespaces
+type InBuf = [u8; size_of::<Command>()];
+type OutBuf = [u8; size_of::<Response>()];
 
 fn main() {
     let mut port = SerialPort::open("/dev/ttyACM0", 9600).unwrap();
-    let cmd = Command::Set(0x12, Msg::B(12), 0b001);
-    let mut buf = [0u8; size_of::<Command>()];
-    let n = ssmarshal::serialize(&mut buf, &cmd).unwrap();
+    let mut out_buf = [0u8; size_of::<Command>()];
+    let mut in_buf = [0u8; size_of::<Response>()];
 
+    let response = request(
+        Command::Set(0x12, Message::B(12), 0b001),
+        &mut port,
+        &mut out_buf,
+        &mut in_buf,
+    );
+    println!("response {:?}", response);
+    let response = request(
+        Command::Get(0x12, 12, 0b001),
+        &mut port,
+        &mut out_buf,
+        &mut in_buf,
+    );
+    println!("response {:?}", response);
+
+    // just to prevent shutdown of socket
+    loop {}
+}
+
+fn request(
+    cmd: Command,
+    port: &mut SerialPort,
+    out_buf: &mut OutBuf,
+    in_buf: &mut InBuf,
+) -> Response {
+    let n = ssmarshal::serialize(out_buf, &cmd).unwrap();
     println!("cdm {:?}, size {}, n {}", cmd, size_of_val(&cmd), n);
 
-    let b = port.write(&buf);
+    let b = port.write(out_buf);
     println!("{:?}", b);
 
-    let r = port.read_exact(&mut buf);
+    let r = port.read_exact(in_buf);
+    println!("{:?}, {:?}", r, in_buf);
+    let (response, _) = ssmarshal::deserialize::<Response>(in_buf).unwrap();
 
-    println!("{:?}, {:?}", r, buf);
-
-    let (cmd, _) = ssmarshal::deserialize::<Command>(&buf).unwrap();
-    println!("cmd {:?}", cmd);
-    loop {}
+    response
 }

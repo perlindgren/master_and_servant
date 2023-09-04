@@ -26,13 +26,15 @@ mod app {
     // Application dependencies
     use core::mem::size_of;
     use ssmarshal;
+    use nb::block;
 
     #[shared]
     struct Shared {}
 
     #[local]
     struct Local {
-        uart: Uart<Usart1>,
+        tx: Tx<Usart1>,
+        rx: Rx<Usart1>,
         usart: Usart<Usart1>,
     }
 
@@ -81,22 +83,23 @@ mod app {
         usart.listen_slice(&[Event::RxReady]);
 
         usart.enter_mode(&uart);
-        uart.write(b's'); // .unwrap(); // not sure we need this
+        // uart.write(b's'); // .unwrap(); // not sure we need this
+        let (tx, rx) = uart.split();
 
-        (Shared {}, Local { uart, usart }, init::Monotonics())
+        (Shared {}, Local { tx, rx, usart }, init::Monotonics())
     }
 
-    #[task(binds=USART1, local = [uart, usart], priority = 2)]
+    #[task(binds=USART1, local = [rx, usart], priority = 2)]
     fn usart(ctx: usart::Context) {
         use hal::serial::usart::Event::*;
 
-        let usart::LocalResources { uart, usart } = ctx.local;
+        let usart::LocalResources { rx, usart } = ctx.local;
         for event in usart.events() {
             match event {
                 RxReady => {
-                    let data = uart.read().unwrap();
+                    let data = rx.read().unwrap();
                     let _ = lowprio::spawn(data);
-                    let _ = uart.write(data); // for now
+                    // let _ = uart.write(data); // for now
                 }
                 TxReady => {
                     // uart.write(b'r');
@@ -106,7 +109,7 @@ mod app {
                 }
                 _ => {
                     rprintln!("event {:?}", event);
-                    uart.clear_errors();
+                    rx.clear_errors();
                 }
             }
         }
@@ -116,13 +119,15 @@ mod app {
         priority = 1, 
         capacity = 100, 
         local = [
+            tx,
+            // locally initialized resources
             n: usize = 0, 
             in_buf: [u8; size_of::<Command>()] = [0u8; size_of::<Command>()],
             out_buf: [u8; size_of::<Response>()] = [0u8; size_of::<Response>()]
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
-        let lowprio::LocalResources { n, in_buf, out_buf } = ctx.local;
+        let lowprio::LocalResources { tx, n, in_buf, out_buf } = ctx.local;
         rprintln!("{} {} {}", data, n, in_buf.len());
         in_buf[*n] = data;
         *n += 1;
@@ -138,8 +143,10 @@ mod app {
             };
 
             let n = ssmarshal::serialize(out_buf, &response).unwrap();
-            // we will have to split
-            // uart.write(data); // for now
+            
+            for byte in out_buf {
+                block!(tx.write(*byte)).unwrap();
+            }
         }
     }
 }

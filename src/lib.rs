@@ -3,9 +3,9 @@
 use serde_derive::{Deserialize, Serialize};
 
 // we could use new-type pattern here but let's keep it simple
-type Id = u32;
-type DevId = u32;
-type Parameter = u32;
+pub type Id = u32;
+pub type DevId = u32;
+pub type Parameter = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
