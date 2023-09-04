@@ -1,6 +1,13 @@
 //! uart_cdc_cmd
 //!
 //! ssmarshal + serde
+//! 
+//! Run on target
+//! cargo embed --example uart_cdc_cmd --release
+//! 
+//! Run on host
+//! cargo run --example cmd
+//! 
 #![no_std]
 #![no_main]
 
@@ -99,7 +106,6 @@ mod app {
                 RxReady => {
                     let data = rx.read().unwrap();
                     let _ = lowprio::spawn(data);
-                    // let _ = uart.write(data); // for now
                 }
                 TxReady => {
                     // uart.write(b'r');
