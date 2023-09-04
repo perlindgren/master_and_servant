@@ -18,6 +18,7 @@
     "blinky",
     "ehal",
     "hclk",
+    "lowprio",
     "mainck",
     "minicom",
     "mosi",
