@@ -1,23 +1,31 @@
 {
   "cSpell.ignoreWords": [
-    "IRDA",
+    "ATSA",
+    "EDBG",
     "Monotonics",
+    "Ovrerrun",
+    "PIOA",
     "PIOB",
     "Prescaler",
     "SUPC",
     "Toggleable",
+    "UART",
+    "USBHS",
     "UTMI",
-    "Xplained",
+    "Vddio",
     "atsamx",
     "bankb",
     "blinky",
-    "eabihf",
     "ehal",
     "hclk",
     "mainck",
+    "minicom",
+    "mosi",
+    "pcks",
+    "rprint",
     "rprintln",
-    "rustc",
+    "rtic",
     "slck",
-    "thumbv"
+    "usart"
   ]
 }

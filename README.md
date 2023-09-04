@@ -2,6 +2,10 @@
 
 A POC implementation for communication between a single master and potentially several servants over serial (IRDA).
 
+## Resources
+
+- [SAM E70 Xplained Ultra User's Guide](https://ww1.microchip.com/downloads/en/DeviceDoc/SAME70_Xplained_Ultra_Evaluation_User%27s%20Guide_DS70005389B.pdf)
+
 ## Master
 
 ## Servant
@@ -19,6 +23,20 @@ cargo build --example blinky_rtt
 ```
 
 The `-p` (package) and `--target` is not needed here as we are in the member folder, and a local `.cargo/config.toml` sets the default target.
+
+To run the CDC example:
+
+```shell
+cargo embed --example uart_cdc --release
+```
+
+On the host connect to /dev/ttyACM0 (or similar) with 9600 8N1
+
+```shell
+ minicom -b 9600 -D /dev/ttyACM0
+```
+
+The application will echo back the character +1 (a -> b, etc.)
 
 ### memory.x and the build.rs
 

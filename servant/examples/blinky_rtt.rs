@@ -1,5 +1,9 @@
-//! Periodically blinks the board's LED2 (located next to the barrel
-//! connector) at ~1Hz.
+//! Periodically blinks the board's LED2 (located next to the barrel connector) at ~1Hz.
+//! Log messages are sent using `rtt`
+//!
+//! To run from terminal (in the `servant` folder).
+//!
+//! cargo embed --example blinky_rtt
 #![no_std]
 #![no_main]
 
