@@ -563,6 +563,7 @@ dependencies = [
  "panic-halt",
  "panic-rtt-target",
  "rtt-target",
+ "ssmarshal",
  "usbd-serial",
 ]
 

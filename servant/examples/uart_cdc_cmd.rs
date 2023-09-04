@@ -8,6 +8,7 @@ use panic_rtt_target as _;
 
 #[rtic::app(device = atsamx7x_hal::pac, peripherals = true, dispatchers = [IXC])]
 mod app {
+    // Backend dependencies
     use atsamx7x_hal as hal;
     use hal::clocks::*;
     use hal::efc::*;
@@ -19,9 +20,12 @@ mod app {
     use hal::serial::uart::UartConfiguration;
     use hal::serial::usart::Event;
     use hal::serial::{usart::*, ExtBpsU32};
-
-    use master_and_servant::;
+    use master_and_servant::{Command, Response};
     use rtt_target::{rprintln, rtt_init_print};
+
+    // Application dependencies
+    use core::mem::size_of;
+    use ssmarshal;
 
     #[shared]
     struct Shared {}
@@ -91,8 +95,8 @@ mod app {
             match event {
                 RxReady => {
                     let data = uart.read().unwrap();
-                    lowprio::spawn(data);
-                    uart.write(data + 1);
+                    let _ = lowprio::spawn(data);
+                    let _ = uart.write(data); // for now
                 }
                 TxReady => {
                     // uart.write(b'r');
@@ -108,8 +112,34 @@ mod app {
         }
     }
 
-    #[task(priority = 1, capacity = 100)]
+    #[task(
+        priority = 1, 
+        capacity = 100, 
+        local = [
+            n: usize = 0, 
+            in_buf: [u8; size_of::<Command>()] = [0u8; size_of::<Command>()],
+            out_buf: [u8; size_of::<Response>()] = [0u8; size_of::<Response>()]
+        ]
+    )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
-        rprintln!("{}", data);
+        let lowprio::LocalResources { n, in_buf, out_buf } = ctx.local;
+        rprintln!("{} {} {}", data, n, in_buf.len());
+        in_buf[*n] = data;
+        *n += 1;
+        if *n == in_buf.len() {
+            rprintln!("command received");
+            let (cmd, _) = ssmarshal::deserialize::<Command>(in_buf).unwrap();
+            rprintln!("cmd {:?}", cmd);
+            *n = 0;
+
+            let response = match cmd {
+                Command::Set(id, par, dev) => Response::SetOk,
+                Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
+            };
+
+            let n = ssmarshal::serialize(out_buf, &response).unwrap();
+            // we will have to split
+            // uart.write(data); // for now
+        }
     }
 }

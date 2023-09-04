@@ -16,12 +16,12 @@ fn main() {
 
     println!("cdm {:?}, size {}, n {}", cmd, size_of_val(&cmd), n);
 
-    // let b = port.write(&buf[0..n]);
-    // println!("{:?}", b);
+    let b = port.write(&buf);
+    println!("{:?}", b);
 
-    // let r = port.read_exact(&mut buf[0..n]);
+    let r = port.read_exact(&mut buf);
 
-    // println!("{:?}, {:?}", r, buf);
+    println!("{:?}, {:?}", r, buf);
 
     let (cmd, _) = ssmarshal::deserialize::<Command>(&buf).unwrap();
     println!("cmd {:?}", cmd);

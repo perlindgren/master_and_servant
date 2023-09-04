@@ -5,20 +5,29 @@ use serde_derive::{Deserialize, Serialize};
 // we could use new-type pattern here but let's keep it simple
 type Id = u32;
 type DevId = u32;
+type Parameter = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
 pub enum Command {
-    Set(Id, Msg, DevId),
-    Default,
+    Set(Id, Message, DevId),
+    Get(Id, Parameter, DevId),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
-pub enum Msg {
+pub enum Message {
     A,
     B(u32),
     C(f32), // we might consider "f16" but not sure it plays well with `ssmarshal`
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[repr(C)]
+pub enum Response {
+    Data(Id, Parameter, u32, DevId),
+    SetOk,
+    ParseError,
 }
 
 // SET (master -> CPU_ID)

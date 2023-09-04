@@ -27,6 +27,7 @@
     "rprintln",
     "rtic",
     "slck",
+    "ssmarshal",
     "usart"
   ]
 }
