@@ -1,11 +1,14 @@
 {
   "cSpell.ignoreWords": [
+    "EDBG",
     "IRDA",
     "Monotonics",
     "PIOB",
     "Prescaler",
     "SUPC",
     "Toggleable",
+    "UART",
+    "USART",
     "UTMI",
     "Xplained",
     "atsamx",
@@ -15,9 +18,14 @@
     "ehal",
     "hclk",
     "mainck",
+    "minicom",
+    "repr",
     "rprintln",
+    "rtic",
     "rustc",
+    "serde",
     "slck",
+    "ssmarshal",
     "thumbv"
   ]
 }

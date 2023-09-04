@@ -8,6 +8,8 @@ A POC implementation for communication between a single master and potentially s
 
 ## Master
 
+See repo for additional info.
+
 ## Servant
 
 To build examples from the top level workspace.
@@ -38,11 +40,15 @@ On the host connect to /dev/ttyACM0 (or similar) with 9600 8N1
 
 The application will echo back the character +1 (a -> b, etc.)
 
+---
+
 ### memory.x and the build.rs
 
 The `memory.x` file specifies the memory layout.
 
 The `build.rs` copies that to the `out` folder for the `servant` crate, and extends the link search to include this `out` folder.
+
+---
 
 ### cargo embed
 
@@ -51,3 +57,18 @@ To run the `blinky_rtt` example from the `servant` folder:
 ```shell
 cargo embed --example blinky_rtt
 ```
+
+---
+
+## EDBG
+
+Pin mapping for the `e70q21b` on the Xplained Ultra:
+
+- `PA21 CDC_USART_RX` <- `EDBG_UART_TXD`
+- `PB04 CDC_USART_TX` -> `EDBG_UART_RXD`
+
+This is supported by the USART1 peripheral.
+
+---
+
+## ssmarshal, serde, serde-derive
