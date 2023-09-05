@@ -2,8 +2,12 @@
   "cSpell.ignoreWords": [
     "Unpark",
     "baudrate",
+    "bitcast",
+    "repr",
     "serialport",
+    "sshmarshal",
     "ssmarshal",
+    "structs",
     "uart"
   ]
 }
