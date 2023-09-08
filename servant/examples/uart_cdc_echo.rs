@@ -1,16 +1,30 @@
-//! uart_cdc_fast
+//! uart_cdc_echo
 //!
+//! Ports used
+//! PA21 CDC_USART_RX <- EDBG_UART_TXD
+//! PB04 CDC_USART_TX -> EDBG_UART_RXD
+//!
+//! On the host side run some terminal.
+//! Under Linux: (actual tty might vary)
+//! 
+//! minicom -b 9600 -D /dev/ttyACM0
+//! 
+//! or under Windows
+//! CoolTerm with 9600 8N1 connected to COM3 (actual COM port could vary)
+//!
+//! The application will echo back the character +1 (a->b, etc.).
+//!
+//! Tested against CoolTerm up to 38400bps. (Defaults to 9600 8N1.)
 #![no_std]
 #![no_main]
 
 use panic_rtt_target as _;
 
-#[rtic::app(device = atsamx7x_hal::pac, peripherals = true, dispatchers = [IXC])]
+#[rtic::app(device = atsamx7x_hal::pac, peripherals = true)]
 mod app {
     use atsamx7x_hal as hal;
     use hal::clocks::*;
     use hal::efc::*;
-    use hal::ehal::prelude::*;
     use hal::ehal::serial::{Read, Write};
     use hal::fugit::RateExtU32;
     use hal::generics::events::EventHandler;
@@ -49,7 +63,7 @@ mod app {
                 },
             )
             .unwrap();
-        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
+        let _pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
 
         let banka = BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
         let bankb = BankB::new(pac.PIOB, &mut mck, &slck, BankConfiguration::default());
@@ -64,23 +78,22 @@ mod app {
         let (handles, mut usart) = Usart::new_usart1(pac.USART1, (mosi, miso, clk, nss), &mut mck);
 
         // consume the usart token and turn it into a uart
-        let mut uart = handles
-            .uart
+        let uart = handles
+            .uart        
             .configure(&usart, &mck, UartConfiguration::default(9600.bps()))
             .unwrap();
 
         // Listen to an interrupt event.
         // usart.listen_slice(&[Event::RxReady, Event::TxReady]); to listen also for TxReady
         usart.listen_slice(&[Event::RxReady]);
-
         usart.enter_mode(&uart);
-        uart.write(b's'); // .unwrap(); // not sure we need this
 
         (Shared {}, Local { uart, usart }, init::Monotonics())
     }
 
     #[task(binds=USART1, local = [uart, usart], priority = 2)]
     fn usart(ctx: usart::Context) {
+        rprintln!("interrupt");
         use hal::serial::usart::Event::*;
 
         let usart::LocalResources { uart, usart } = ctx.local;
@@ -88,8 +101,8 @@ mod app {
             match event {
                 RxReady => {
                     let data = uart.read().unwrap();
-                    lowprio::spawn(data);
-                    uart.write(data + 1);
+                    rprintln!("read {:?}", data);
+                    uart.write(data + 1).unwrap();
                 }
                 TxReady => {
                     // uart.write(b'r');
@@ -103,10 +116,5 @@ mod app {
                 }
             }
         }
-    }
-
-    #[task(priority = 1, capacity = 100)]
-    fn lowprio(ctx: lowprio::Context, data: u8) {
-        rprintln!("{}", data);
     }
 }
