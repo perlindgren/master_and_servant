@@ -17,9 +17,18 @@ fn main() {
     port.set_dtr(true).unwrap();
     port.set_rts(true).unwrap();
     let t = port.get_write_timeout();
-    println!("get timeout t {:?}", t);
-    let t = port.set_write_timeout(Duration::from_millis(10));
+    println!("get write timeout t {:?}", t);
+    let t = port.set_write_timeout(Duration::from_millis(1000));
     println!("set timeout t {:?}", t);
+    let t = port.get_write_timeout();
+    println!("get write timeout t {:?}", t);
+
+    let t = port.get_read_timeout();
+    println!("get read timeout t {:?}", t);
+    let t = port.set_read_timeout(Duration::from_millis(1000));
+    println!("get read timeout t {:?}", t);
+    let t = port.get_read_timeout();
+    println!("get read timeout t {:?}", t);
 
     let mut out_buf = [0u8; size_of::<Command>()];
     let mut in_buf = [0u8; size_of::<Response>()];
@@ -38,9 +47,6 @@ fn main() {
         &mut in_buf,
     );
     println!("response {:?}", response);
-
-    // just to prevent shutdown of socket
-    loop {}
 }
 
 fn request(
@@ -53,9 +59,9 @@ fn request(
     println!("cdm {:?}, size {}, n {}", cmd, size_of_val(&cmd), n);
 
     let r = port.write_all(out_buf);
-    println!("{:?}", r);
-    let r = port.flush();
-    println!("{:?}", r);
+    // println!("{:?}", r);
+    // let r = port.flush();
+    // println!("{:?}", r);
 
     let r = port.read_exact(in_buf);
     println!("{:?}, {:?}", r, in_buf);

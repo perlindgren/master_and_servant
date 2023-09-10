@@ -1,9 +1,9 @@
-//! uart_cdc_cmd
+//! cmd
 //!
 //! ssmarshal + serde
 //! 
 //! Run on target
-//! cargo embed --example uart_cdc_cmd --release
+//! cargo embed --example cmd --release
 //! 
 //! Run on host
 //! cargo run --example cmd
@@ -19,7 +19,6 @@ mod app {
     use atsamx7x_hal as hal;
     use hal::clocks::*;
     use hal::efc::*;
-    use hal::ehal::prelude::*;
     use hal::ehal::serial::{Read, Write};
     use hal::fugit::RateExtU32;
     use hal::generics::events::EventHandler;
@@ -65,7 +64,7 @@ mod app {
                 },
             )
             .unwrap();
-        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
+        let _pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
 
         let banka = BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
         let bankb = BankB::new(pac.PIOB, &mut mck, &slck, BankConfiguration::default());
@@ -80,7 +79,7 @@ mod app {
         let (handles, mut usart) = Usart::new_usart1(pac.USART1, (mosi, miso, clk, nss), &mut mck);
 
         // consume the usart token and turn it into a uart
-        let mut uart = handles
+        let uart = handles
             .uart
             .configure(&usart, &mck, UartConfiguration::default(9600.bps()))
             .unwrap();
@@ -90,7 +89,6 @@ mod app {
         usart.listen_slice(&[Event::RxReady]);
 
         usart.enter_mode(&uart);
-        // uart.write(b's'); // .unwrap(); // not sure we need this
         let (tx, rx) = uart.split();
 
         (Shared {}, Local { tx, rx, usart }, init::Monotonics())
@@ -133,6 +131,7 @@ mod app {
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
+        rprintln!("received : {}", data);
         let lowprio::LocalResources { tx, n, in_buf, out_buf } = ctx.local;
         rprintln!("{} {} {}", data, n, in_buf.len());
         in_buf[*n] = data;
