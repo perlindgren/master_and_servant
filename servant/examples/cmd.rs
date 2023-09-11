@@ -2,10 +2,10 @@
 //!
 //! ssmarshal + serde
 //! 
-//! Run on target
+//! Run on target: `cd servant`
 //! cargo embed --example cmd --release
 //! 
-//! Run on host
+//! Run on host: `cd master`
 //! cargo run --example cmd
 //! 
 #![no_std]
@@ -143,11 +143,11 @@ mod app {
             *n = 0;
 
             let response = match cmd {
-                Command::Set(id, par, dev) => Response::SetOk,
+                Command::Set(_id, _par, _dev) => Response::SetOk,
                 Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
             };
 
-            let n = ssmarshal::serialize(out_buf, &response).unwrap();
+            let _n = ssmarshal::serialize(out_buf, &response).unwrap();
             
             for byte in out_buf {
                 block!(tx.write(*byte)).unwrap();

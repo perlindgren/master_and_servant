@@ -1,25 +1,22 @@
-use core::time::Duration;
+// cmd.rs
+//
+// On host `cd master` run:
+// cargo run --example cmd
+//
+// On target `cd servant` run
+// cargo embed --example cmd --release 
+
 use master_and_servant::{Command, Message, Response};
 use serial2::SerialPort;
 use std::io::Read;
 use std::mem::{size_of, size_of_val};
+use master::open;
 
 type InBuf = [u8; size_of::<Command>()];
 type OutBuf = [u8; size_of::<Response>()];
 
-#[cfg(target_os = "linux")]
-static COM_PATH: &str = "/dev/ttyACM0";
-#[cfg(target_os = "windows")]
-static COM_PATH: &str = "COM3";
-
-fn main() {
-    let mut port = SerialPort::open(COM_PATH, 9600).unwrap();
-    port.set_dtr(true).unwrap();
-    port.set_rts(true).unwrap();
-    let t = port.get_write_timeout();
-    println!("get timeout t {:?}", t);
-    let t = port.set_write_timeout(Duration::from_millis(10));
-    println!("set timeout t {:?}", t);
+fn main() -> Result<(),  std::io::Error> {
+    let mut port = open()?;
 
     let mut out_buf = [0u8; size_of::<Command>()];
     let mut in_buf = [0u8; size_of::<Response>()];
@@ -38,9 +35,7 @@ fn main() {
         &mut in_buf,
     );
     println!("response {:?}", response);
-
-    // just to prevent shutdown of socket
-    loop {}
+    Ok(())
 }
 
 fn request(
