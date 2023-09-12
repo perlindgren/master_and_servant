@@ -1,12 +1,12 @@
 //! cmd
 //!
-//! ssmarshal + serde + cobs
+//! ssmarshal + serde + crc + cobs
 //! 
 //! Run on target: `cd servant`
-//! cargo embed --example cmd_cobs --release
+//! cargo embed --example cmd_crc_cobs --release
 //! 
 //! Run on host: `cd master`
-//! cargo run --example cmd_cobs
+//! cargo run --example cmd_crc_cobs
 //! 
 #![no_std]
 #![no_main]
@@ -27,16 +27,20 @@ mod app {
     use hal::serial::usart::Event;
     use hal::serial::{usart::*, ExtBpsU32};
     use master_and_servant::{Command, Response};
-    use rtt_target::{rprintln, rtt_init_print};
+    use rtt_target::{rprintln, rprint, rtt_init_print};
 
     // Application dependencies
     use core::mem::size_of;
     use ssmarshal;
     use nb::block;
     use corncobs::{decode_in_place, encode_buf, max_encoded_len, ZERO};
+    use crc::{Crc, CRC_32_CKSUM};
 
-    const IN_SIZE: usize = max_encoded_len(size_of::<Command>());
-    const OUT_SIZE: usize = max_encoded_len(size_of::<Response>());    
+    pub const CKSUM: Crc<u32> = Crc::<u32>::new(&CRC_32_CKSUM);
+
+    const IN_SIZE: usize = max_encoded_len(size_of::<Command>() + size_of::<u32>());
+    const OUT_SIZE: usize = max_encoded_len(size_of::<Response>() + size_of::<u32>());
+
     #[shared]
     struct Shared {}
 
@@ -134,9 +138,8 @@ mod app {
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
-        rprintln!("received : {}", data);
         let lowprio::LocalResources { tx, index, in_buf, out_buf } = ctx.local;
-        rprintln!("{} {} {}", data, index, in_buf.len());
+        rprint!("r{} {}", data, index);
         in_buf[*index] = data;
 
         // ensure index in range
@@ -151,11 +154,18 @@ mod app {
 
             *index = 0; // reset index
             let n = decode_in_place(in_buf).unwrap();
-            rprintln!("dec n {}", n);
+            rprintln!("decoded n {}, {:?}", n, &in_buf[0..n]);
 
             match ssmarshal::deserialize::<Command>(in_buf) {
-                Ok((cmd, n)) => {
-                    rprintln!("cmd {:?} n {}", cmd, n);
+                Ok((cmd, cmd_used)) => {
+                    rprintln!("cmd {:?} cmd_used {}", cmd, cmd_used);
+                    let crc_buf = &in_buf[cmd_used..];
+                    rprintln!("crc_buf {:?}", crc_buf);
+                    let (crc, crc_used) = ssmarshal::deserialize::<u32>(crc_buf).unwrap();
+                    rprintln!("crc {}, crc_used {}", crc, crc_used);
+
+                    let pkg_crc = CKSUM.checksum(&in_buf[0..cmd_used]);
+                    rprintln!("pkg_crc {}, valid {}", pkg_crc, pkg_crc == crc);
 
                     let response = match cmd {
                         Command::Set(_id, _par, _dev) => Response::SetOk,
