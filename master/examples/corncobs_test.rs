@@ -1,5 +1,5 @@
 use corncobs::{encode_buf, max_encoded_len};
-use master_and_servant::{Command, Message, Response};
+use master_and_servant::{Command, Message};
 use std::mem::{size_of, size_of_val};
 
 fn main() {
