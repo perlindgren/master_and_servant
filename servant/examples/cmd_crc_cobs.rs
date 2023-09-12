@@ -1,13 +1,13 @@
 //! cmd
 //!
 //! ssmarshal + serde + crc + cobs
-//! 
+//!
 //! Run on target: `cd servant`
 //! cargo embed --example cmd_crc_cobs --release
-//! 
+//!
 //! Run on host: `cd master`
 //! cargo run --example cmd_crc_cobs
-//! 
+//!
 #![no_std]
 #![no_main]
 
@@ -27,14 +27,14 @@ mod app {
     use hal::serial::usart::Event;
     use hal::serial::{usart::*, ExtBpsU32};
     use master_and_servant::{Command, Response};
-    use rtt_target::{rprintln, rprint, rtt_init_print};
+    use rtt_target::{rprint, rprintln, rtt_init_print};
 
     // Application dependencies
     use core::mem::size_of;
-    use ssmarshal;
-    use nb::block;
     use corncobs::{decode_in_place, encode_buf, max_encoded_len, ZERO};
     use crc::{Crc, CRC_32_CKSUM};
+    use nb::block;
+    use ssmarshal;
 
     pub const CKSUM: Crc<u32> = Crc::<u32>::new(&CRC_32_CKSUM);
 
@@ -127,25 +127,30 @@ mod app {
     }
 
     #[task(
-        priority = 1, 
-        capacity = 100, 
+        priority = 1,
+        capacity = 100,
         local = [
             tx,
             // locally initialized resources
-            index: usize = 0, 
+            index: usize = 0,
             in_buf: [u8; IN_SIZE] = [0u8; IN_SIZE],
             out_buf: [u8; OUT_SIZE] = [0u8; OUT_SIZE]
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
-        let lowprio::LocalResources { tx, index, in_buf, out_buf } = ctx.local;
+        let lowprio::LocalResources {
+            tx,
+            index,
+            in_buf,
+            out_buf,
+        } = ctx.local;
         rprint!("r{} {}", data, index);
         in_buf[*index] = data;
 
         // ensure index in range
-        if *index < IN_SIZE -1 {
+        if *index < IN_SIZE - 1 {
             *index += 1;
-        } 
+        }
 
         // end of cobs frame
         if data == ZERO {
@@ -164,33 +169,45 @@ mod app {
                     let (crc, crc_used) = ssmarshal::deserialize::<u32>(crc_buf).unwrap();
                     rprintln!("crc {}, crc_used {}", crc, crc_used);
 
-                    let pkg_crc = CKSUM.checksum(&in_buf[0..cmd_used]);
-                    rprintln!("pkg_crc {}, valid {}", pkg_crc, pkg_crc == crc);
+                    let cmd_crc = CKSUM.checksum(&in_buf[0..cmd_used]);
+                    rprintln!("cmd_crc {}, valid {}", cmd_crc, cmd_crc == crc);
 
                     let response = match cmd {
                         Command::Set(_id, _par, _dev) => Response::SetOk,
                         Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
                     };
-        
+
                     rprintln!("response {:?}", response);
-                    let n = ssmarshal::serialize(out_buf, &response).unwrap();
+                    let resp_used = ssmarshal::serialize(out_buf, &response).unwrap();
+                    let resp_crc = CKSUM.checksum(&out_buf[0..resp_used]);
+                    rprintln!("resp_crc {}", resp_crc);
+
+                    let crc_used =
+                        ssmarshal::serialize(&mut out_buf[resp_used..], &resp_crc).unwrap();
+                    rprintln!("crc_used {}", crc_used);
+
                     let buf_clone = out_buf.clone();
-                    rprintln!("n {}, out_buf {:?}, out_buf_clone {:?}", n, &out_buf[0..n], &buf_clone[0..n]);
+                    rprintln!(
+                        "n {}, out_buf {:?}, out_buf_clone {:?}",
+                        n,
+                        &out_buf[0..resp_used + crc_used],
+                        &buf_clone[0..n]
+                    );
 
                     let n = encode_buf(&buf_clone[0..n], out_buf);
                     rprintln!("cobs n {}", n);
-                    rprintln!("out_buf {:?}", &out_buf[0..n]);
-                    
-                    for byte in &out_buf[0..n] {
+                    let to_write = &out_buf[0..n];
+                    rprintln!("to_write {:?}", to_write);
+
+                    for byte in to_write {
                         block!(tx.write(*byte)).unwrap();
                     }
-                },
+                }
 
                 Err(err) => {
-                    rprintln!("ssmarshal err {:?}", err); 
+                    rprintln!("ssmarshal err {:?}", err);
                 }
             }
-           
         }
     }
 }

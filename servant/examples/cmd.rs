@@ -1,13 +1,13 @@
 //! cmd
 //!
 //! ssmarshal + serde
-//! 
+//!
 //! Run on target: `cd servant`
 //! cargo embed --example cmd --release
-//! 
+//!
 //! Run on host: `cd master`
 //! cargo run --example cmd
-//! 
+//!
 #![no_std]
 #![no_main]
 
@@ -31,8 +31,8 @@ mod app {
 
     // Application dependencies
     use core::mem::size_of;
-    use ssmarshal;
     use nb::block;
+    use ssmarshal;
 
     #[shared]
     struct Shared {}
@@ -120,19 +120,24 @@ mod app {
     }
 
     #[task(
-        priority = 1, 
-        capacity = 100, 
+        priority = 1,
+        capacity = 100,
         local = [
             tx,
             // locally initialized resources
-            n: usize = 0, 
+            n: usize = 0,
             in_buf: [u8; size_of::<Command>()] = [0u8; size_of::<Command>()],
             out_buf: [u8; size_of::<Response>()] = [0u8; size_of::<Response>()]
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
         rprintln!("received : {}", data);
-        let lowprio::LocalResources { tx, n, in_buf, out_buf } = ctx.local;
+        let lowprio::LocalResources {
+            tx,
+            n,
+            in_buf,
+            out_buf,
+        } = ctx.local;
         rprintln!("{} {} {}", data, n, in_buf.len());
         in_buf[*n] = data;
         *n += 1;
@@ -148,7 +153,7 @@ mod app {
             };
 
             let _n = ssmarshal::serialize(out_buf, &response).unwrap();
-            
+
             for byte in out_buf {
                 block!(tx.write(*byte)).unwrap();
             }

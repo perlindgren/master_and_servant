@@ -6,9 +6,9 @@
 //!
 //! On the host side run some terminal.
 //! Under Linux: (actual tty might vary)
-//! 
+//!
 //! minicom -b 9600 -D /dev/ttyACM0
-//! 
+//!
 //! or under Windows
 //! CoolTerm with 9600 8N1 connected to COM3 (actual COM port could vary)
 //!
@@ -79,7 +79,7 @@ mod app {
 
         // consume the usart token and turn it into a uart
         let uart = handles
-            .uart        
+            .uart
             .configure(&usart, &mck, UartConfiguration::default(9600.bps()))
             .unwrap();
 

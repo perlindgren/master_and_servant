@@ -72,7 +72,7 @@ mod app {
         // usart.listen_slice(&[Event::RxReady, Event::TxReady]); to listen also for TxReady
         usart.listen_slice(&[Event::RxReady]);
         usart.enter_mode(&uart);
-       
+
         (Shared {}, Local { uart, usart }, init::Monotonics())
     }
 

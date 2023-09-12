@@ -25,6 +25,7 @@
     "mainck",
     "minicom",
     "openocd",
+    "pcks",
     "repr",
     "rprint",
     "rprintln",
