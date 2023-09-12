@@ -375,8 +375,11 @@ dependencies = [
 name = "master_and_servant"
 version = "0.1.0"
 dependencies = [
+ "corncobs",
+ "crc",
  "serde",
  "serde_derive",
+ "ssmarshal",
 ]
 
 [[package]]

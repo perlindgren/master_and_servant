@@ -1,20 +1,23 @@
+// hello.rs
+//
+// Run some echo example on target
+//
+// cargo run --example hello
+//
+// Prints the echoed data.
+// Assumes that each character sent is echoed.
+
+use master::open;
 use std::io::Read;
 
-use serial2::SerialPort;
-
-// On Windows, use something like "COM1".
-// For COM ports above COM9, you need to use the win32 device namespace, for example "\\.\COM10" (or "\\\\.\\COM10" with string escaping).
-// For more details, see: https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#win32-device-namespaces
-
 fn main() {
-    let mut port = SerialPort::open("/dev/ttyACM0", 9600).unwrap();
-    let hello = "hello".as_bytes();
-    let mut buf = vec![0u8; hello.len()];
-    let b = port.write(hello);
-    println!("{:?}", b);
+    let mut port = open().unwrap();
+    let data = "hello".as_bytes();
+    let mut buf = vec![0u8; data.len()];
+    let status = port.write(data);
+    println!("Write status: {:?}", status);
 
-    let r = port.read_exact(buf.as_mut_slice());
-
-    println!("{:?}, {:?}", r, buf);
-    loop {}
+    let status = port.read_exact(buf.as_mut_slice());
+    println!("Read status: {:?}", status);
+    println!("Data received: {:?}", buf);
 }
