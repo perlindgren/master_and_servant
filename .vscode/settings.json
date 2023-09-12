@@ -15,6 +15,7 @@
     "Xplained",
     "atsamx",
     "bankb",
+    "bitcast",
     "blinky",
     "eabi",
     "eabihf",
@@ -34,8 +35,12 @@
     "rustup",
     "serde",
     "slck",
+    "sshmarshal",
     "ssmarshal",
-    "thumbv"
+    "structs",
+    "thumbv",
+    "usize",
+    "varint"
   ],
   "[rust-analyzer]": {
     "editor.defaultFormatter": "rust-lang.rust", // Makes the magic

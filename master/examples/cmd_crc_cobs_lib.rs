@@ -1,11 +1,12 @@
-// cmd_cobs.rs
-//
-// On host `cd master` run:
-// cargo run --example cmd_crc_cobs
-//
-// On target `cd servant` run
-// cargo embed --example cmd_crc_cobs --release
-
+//! cmd_cobs.rs
+//!
+//! On target `cd servant` run:
+//!
+//! cargo embed --example cmd_crc_cobs_lib --release
+//!
+//! On host `cd master` run:
+//! cargo run --example cmd_crc_cobs_lib
+//!
 use corncobs::{max_encoded_len, ZERO};
 use master::open;
 use master_and_servant::{deserialize_crc_cobs, serialize_crc_cobs, Command, Message, Response};
@@ -55,7 +56,7 @@ fn request(
         }
         port.read_exact(slice)?;
         if slice[0] == ZERO {
-            println!("ZERO");
+            println!("-- cobs package received --");
             break;
         }
     }

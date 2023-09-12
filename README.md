@@ -71,4 +71,53 @@ This is supported by the USART1 peripheral.
 
 ---
 
-## ssmarshal, serde, serde-derive
+## `ssmarshal`, `serde`, `serde-derive`, `crc`, `corncobs` 
+
+Data types in Rust are typically `Sized`, in fact a variable in Rust always has a known size, whereas dynamic sized data are represented through references (e.g, `Box`).
+
+For our purposes here, sending/receiving data, `Commands`/`Requests` do not carry references, and thus `Sized`.
+
+`ssmarshal` provides lightweight serialization as follows:
+
+The format is not incredibly compact, but doesn't add extra fluff, and is
+quick to en/decode.
+
+- bool is serialized as a byte, 1 if true, 0 is false.
+- the integer types are encoded in their little-endian form.
+- f32 is bitcast to a u32 then encoded as a u32. likewise, f64 and u64.
+- inhabited enums are serialized as 1 byte for the discriminant, and then the fields.
+- structs are serialized as just their fields.
+- the unit type and uninhabited enums are not serialized at all.
+- tuples are serialized as the fields, in order.
+
+Rust data types are defined with padding, adding additional space to the layout, `ssmarshal` is non-padded, and each data type is encoded 1-1 to the Rust representation, or cheaper (due to the lack of padding).
+
+Notice that `enums` must use the `#[repr(C)]` (and the number of variants is limited to 256). These invariants are up to you to ensure!
+
+The `corncobs` encoder provides `max_encoded_len` as a `const` function. This allows us to statically determine safe space requirements, e.g, as follows.
+
+```rust
+const IN_SIZE: usize = max_encoded_len(size_of::<Response>() + size_of::<u32>());
+const OUT_SIZE: usize = max_encoded_len(size_of::<Command>() + size_of::<u32>());
+
+type InBuf = [u8; IN_SIZE];
+type OutBuf = [u8; OUT_SIZE];
+```
+
+So `InBuf` is a safe allocation for serializations of `Response`, and `OutBuf` is a safe allocation for `Command`, in both cases includes padding, checksum `<u32>`, and cobs encoding.
+
+Unless bit errors on the link occurs, send/receive of commands are infallible. This holds similarly for any `Sized` data structure in Rust, under the `enum` restrictions discussed earlier.
+
+While `corncobs` is designed for speed and memory efficiency, validation is not natively supported. To this end we adopt the `crc` crate. The `crc` is computed on serialization and part of the cobs encoding package. 
+
+The approach is similar to `postcard`, but a bit more bare bones (without `varint` dependency). For buffer types created as shown above, allocations are guaranteed. 
+
+---
+
+## Future work
+
+Current stable Rust does not allow buffer types to be computed at compile time, it may be possible by nightly features, but out of scope for this work.
+
+A possible workaround is to implement a custom derive, providing a buffer type and buffer type constructor.
+
+

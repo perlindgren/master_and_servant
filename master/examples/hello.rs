@@ -1,12 +1,17 @@
-// hello.rs
-//
-// Run some echo example on target
-//
-// cargo run --example hello
-//
-// Prints the echoed data.
-// Assumes that each character sent is echoed.
-
+//! hello.rs
+//!
+//! On target `cd servant` run:
+//!
+//! cargo embed --example uart_cdc_echo --release
+//! or
+//! cargo embed --example uart_cdc_fast_echo --release
+//!
+//! On host `cd master` run:
+//!
+//! cargo run --example hello
+//!
+//! Prints the echoed data.
+//! Assumes that each character sent is echoed.
 use master::open;
 use std::io::Read;
 

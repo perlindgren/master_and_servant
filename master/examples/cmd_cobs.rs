@@ -1,11 +1,11 @@
-// cmd_cobs.rs
-//
-// On host `cd master` run:
-// cargo run --example cmd_cobs
-//
-// On target `cd servant` run
-// cargo embed --example cmd_cobs --release
-
+//! cmd_cobs.rs
+//!
+//! On host `cd master` run:
+//! cargo run --example cmd_cobs
+//!
+//! On target `cd servant` run
+//! cargo embed --example cmd_cobs --release
+//!
 use corncobs::{decode_in_place, encode_buf, max_encoded_len, ZERO};
 use master::open;
 use master_and_servant::{Command, Message, Response};

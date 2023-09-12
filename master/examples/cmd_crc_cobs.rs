@@ -1,11 +1,12 @@
-// cmd_cobs.rs
-//
-// On host `cd master` run:
-// cargo run --example cmd_crc_cobs
-//
-// On target `cd servant` run
-// cargo embed --example cmd_crc_cobs --release
-
+//! cmd_cobs.rs
+//!
+//! On target `cd servant` run:
+//!
+//! cargo embed --example cmd_crc_cobs --release
+//!
+//! On host `cd master` run:
+//! cargo run --example cmd_crc_cobs
+//!
 use corncobs::{decode_in_place, encode_buf, max_encoded_len, ZERO};
 use crc::{Crc, CRC_32_CKSUM};
 use master::open;
@@ -32,10 +33,10 @@ fn main() -> Result<(), std::io::Error> {
     let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf)?;
     println!("response {:?}", response);
 
-    // let cmd = Command::Get(0x12, 12, 0b001);
-    // println!("request {:?}", cmd);
-    // let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf)?;
-    // println!("response {:?}", response);
+    let cmd = Command::Get(0x12, 12, 0b001);
+    println!("request {:?}", cmd);
+    let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf)?;
+    println!("response {:?}", response);
     Ok(())
 }
 
@@ -72,7 +73,7 @@ fn request(
         }
         port.read_exact(slice)?;
         if slice[0] == ZERO {
-            println!("ZERO");
+            println!("-- cobs package received --");
             break;
         }
     }

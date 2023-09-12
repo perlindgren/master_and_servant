@@ -15,6 +15,8 @@
 //! The application will echo back the character +1 (a->b, etc.).
 //!
 //! Tested against CoolTerm up to 38400bps. (Defaults to 9600 8N1.)
+//!
+//! Works also with the `hello.rs` host side application.
 #![no_std]
 #![no_main]
 

@@ -1,5 +1,8 @@
 //! uart_cdc_fast_echo
 //!
+//! Faster version of `uart_cdc_echo`.
+//! Everything else is the same.
+//!
 #![no_std]
 #![no_main]
 
