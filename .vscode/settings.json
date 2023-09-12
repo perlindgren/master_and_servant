@@ -33,7 +33,7 @@
     "ssmarshal",
     "thumbv"
   ],
-  "[rust]": {
+  "[rust-analyzer]": {
     "editor.defaultFormatter": "rust-lang.rust", // Makes the magic
     "editor.formatOnSave": true // Optional
   }

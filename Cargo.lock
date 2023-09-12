@@ -579,6 +579,7 @@ name = "servant"
 version = "0.1.0"
 dependencies = [
  "atsamx7x-hal",
+ "corncobs",
  "cortex-m",
  "cortex-m-rtic",
  "heapless",

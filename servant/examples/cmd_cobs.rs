@@ -1,12 +1,12 @@
 //! cmd
 //!
-//! ssmarshal + serde
+//! ssmarshal + serde + cobs
 //! 
-//! Run on target
-//! cargo embed --example cmd --release
+//! Run on target: `cd servant`
+//! cargo embed --example cmd_cobs --release
 //! 
-//! Run on host
-//! cargo run --example cmd
+//! Run on host: `cd master`
+//! cargo run --example cmd_cobs
 //! 
 #![no_std]
 #![no_main]
@@ -33,7 +33,10 @@ mod app {
     use core::mem::size_of;
     use ssmarshal;
     use nb::block;
+    use corncobs::{decode_in_place, encode_buf, max_encoded_len, ZERO};
 
+    const IN_SIZE: usize = max_encoded_len(size_of::<Command>());
+    const OUT_SIZE: usize = max_encoded_len(size_of::<Response>());    
     #[shared]
     struct Shared {}
 
@@ -125,33 +128,60 @@ mod app {
         local = [
             tx,
             // locally initialized resources
-            n: usize = 0, 
-            in_buf: [u8; size_of::<Command>()] = [0u8; size_of::<Command>()],
-            out_buf: [u8; size_of::<Response>()] = [0u8; size_of::<Response>()]
+            index: usize = 0, 
+            in_buf: [u8; IN_SIZE] = [0u8; IN_SIZE],
+            out_buf: [u8; OUT_SIZE] = [0u8; OUT_SIZE]
         ]
     )]
     fn lowprio(ctx: lowprio::Context, data: u8) {
         rprintln!("received : {}", data);
-        let lowprio::LocalResources { tx, n, in_buf, out_buf } = ctx.local;
-        rprintln!("{} {} {}", data, n, in_buf.len());
-        in_buf[*n] = data;
-        *n += 1;
-        if *n == in_buf.len() {
-            rprintln!("command received");
-            let (cmd, _) = ssmarshal::deserialize::<Command>(in_buf).unwrap();
-            rprintln!("cmd {:?}", cmd);
-            *n = 0;
+        let lowprio::LocalResources { tx, index, in_buf, out_buf } = ctx.local;
+        rprintln!("{} {} {}", data, index, in_buf.len());
+        in_buf[*index] = data;
 
-            let response = match cmd {
-                Command::Set(id, par, dev) => Response::SetOk,
-                Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
-            };
+        // ensure index in range
+        if *index < IN_SIZE -1 {
+            *index += 1;
+        } 
 
-            let n = ssmarshal::serialize(out_buf, &response).unwrap();
-            
-            for byte in out_buf {
-                block!(tx.write(*byte)).unwrap();
+        // end of cobs frame
+        if data == ZERO {
+            rprintln!("cobs frame received index {}", index);
+            rprintln!("in_buf {:?}", &in_buf[0..*index]);
+
+            *index = 0; // reset index
+            let n = decode_in_place(in_buf).unwrap();
+            rprintln!("dec n {}", n);
+
+
+            match ssmarshal::deserialize::<Command>(in_buf) {
+                Ok((cmd, n)) => {
+                    rprintln!("cmd {:?} n {}", cmd, n);
+
+                    let response = match cmd {
+                        Command::Set(_id, _par, _dev) => Response::SetOk,
+                        Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
+                    };
+        
+                    rprintln!("response {:?}", response);
+                    let n = ssmarshal::serialize(out_buf, &response).unwrap();
+                    let buf_clone = out_buf.clone();
+                    rprintln!("n {}, out_buf {:?}, out_buf_clone {:?}", n, &out_buf[0..n], &buf_clone[0..n]);
+
+                    let n = encode_buf(&buf_clone[0..n], out_buf);
+                    rprintln!("cobs n {}", n);
+                    rprintln!("out_buf {:?}", &out_buf[0..n]);
+                    
+                    for byte in &out_buf[0..n] {
+                        block!(tx.write(*byte)).unwrap();
+                    }
+                },
+
+                Err(err) => {
+                    rprintln!("ssmarshal err {:?}", err); 
+                }
             }
+           
         }
     }
 }
