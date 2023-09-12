@@ -81,7 +81,16 @@ fn request(
     let n = decode_in_place(in_buf).unwrap();
     println!("ser # decoded {}", n);
 
-    let (response, n) = ssmarshal::deserialize::<Response>(&in_buf[0..n]).unwrap();
-    println!("ser used {}", n);
+    let (response, resp_used) = ssmarshal::deserialize::<Response>(&in_buf[0..n]).unwrap();
+    println!("reps used {}", resp_used);
+
+    let crc_buf = &in_buf[resp_used..];
+    println!("crc_buf {:?}", crc_buf);
+    let (crc, crc_used) = ssmarshal::deserialize::<u32>(crc_buf).unwrap();
+    println!("crc {}, crc_used {}", crc, crc_used);
+
+    let resp_crc = CKSUM.checksum(&in_buf[0..resp_used]);
+    println!("cmd_crc {}, valid {}", resp_crc, resp_crc == crc);
+
     Ok(response)
 }

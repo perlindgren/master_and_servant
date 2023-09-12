@@ -179,6 +179,8 @@ mod app {
 
                     rprintln!("response {:?}", response);
                     let resp_used = ssmarshal::serialize(out_buf, &response).unwrap();
+                    rprintln!("resp_used {}", resp_used);
+
                     let resp_crc = CKSUM.checksum(&out_buf[0..resp_used]);
                     rprintln!("resp_crc {}", resp_crc);
 
@@ -194,7 +196,7 @@ mod app {
                         &buf_clone[0..n]
                     );
 
-                    let n = encode_buf(&buf_clone[0..n], out_buf);
+                    let n = encode_buf(&buf_clone[0..resp_used + crc_used], out_buf);
                     rprintln!("cobs n {}", n);
                     let to_write = &out_buf[0..n];
                     rprintln!("to_write {:?}", to_write);
