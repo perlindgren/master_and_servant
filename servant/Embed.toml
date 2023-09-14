@@ -1,7 +1,8 @@
 [default.probe]
-usb_vid = "03eb"
-usb_pid = "2111"
+# usb_vid = "03eb"
+# usb_pid = "2111"
 protocol = "Swd"
+#protocol = "Jtag"
 
 [default.flashing]
 # Whether or not the target should be flashed.
