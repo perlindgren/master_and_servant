@@ -4,8 +4,10 @@
     "EDBG",
     "IRDA",
     "Monotonics",
+    "PIOA",
     "PIOB",
     "Prescaler",
+    "RSWDT",
     "SUPC",
     "Toggleable",
     "UART",
@@ -40,7 +42,8 @@
     "structs",
     "thumbv",
     "usize",
-    "varint"
+    "varint",
+    "xtal"
   ],
   "[rust-analyzer]": {
     "editor.defaultFormatter": "rust-lang.rust", // Makes the magic
