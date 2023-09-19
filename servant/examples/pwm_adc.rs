@@ -13,7 +13,7 @@ mod app {
     use hal::efc::*;
     use hal::ehal::adc::OneShot;
     use hal::ehal::digital::v2::ToggleableOutputPin;
-    use hal::fugit::RateExtU32;
+    use hal::fugit::{Instant, RateExtU32};
     use hal::pio::*;
     use rtt_target::{rprintln, rtt_init_print};
 
@@ -38,7 +38,7 @@ mod app {
         pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
-        rprintln!("reset - cmd_crc_cobs_lib");
+        rprintln!("reset - pwm_adc");
         for _ in 0..5 {
             for _ in 0..4000_000 {
                 cortex_m::asm::nop();
@@ -52,7 +52,7 @@ mod app {
         let slck = clocks.slck.configure_internal();
         // use external xtal as oscillator for main clock
         let mainck = clocks.mainck.configure_external_normal(16.MHz()).unwrap();
-        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 3).unwrap();
+        let _pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 3).unwrap();
         let (hclk, mut mck) = HostClockController::new(clocks.hclk, clocks.mck)
             .configure(
                 &mainck,
@@ -68,18 +68,21 @@ mod app {
 
         let bankb = hal::pio::BankB::new(pac.PIOB, &mut mck, &slck, BankConfiguration::default());
 
-        let mono = DwtSystick::new(
+        let mut mono = DwtSystick::new(
             &mut ctx.core.DCB,
             ctx.core.DWT,
             ctx.core.SYST,
             hclk.systick_freq().to_Hz(),
         );
 
+        let now = mono.now();
+
         let afec = Afec::new_afec0(pac.AFEC0, &mut mck).unwrap();
         let adc_pin = bankb.pb3.into_input(PullDir::PullUp);
         let pwm_pin = banka.pa0.into_output(true);
 
-        adc_sample::spawn().unwrap();
+        // spawn fist sample directly
+        adc_sample::spawn_at(now, now).unwrap();
 
         (
             Shared {},
@@ -92,21 +95,33 @@ mod app {
         )
     }
 
-    #[task(local = [afec, pwm_pin, adc_pin])]
-    fn adc_sample(ctx: adc_sample::Context) {
+    #[idle]
+    fn idle(_: idle::Context) -> ! {
+        loop {}
+    }
+
+    #[task(local = [afec, pwm_pin, adc_pin, cnt:u32 = 0])]
+    fn adc_sample(ctx: adc_sample::Context, now: Instant<u32, 1, 16_000_000>) {
         let adc_sample::LocalResources {
             afec,
             adc_pin,
             pwm_pin,
+            cnt,
         } = ctx.local;
 
+        *cnt = (*cnt + 1) % 999;
         // get sample
         let v: f32 = afec.read(adc_pin).unwrap();
-        rprintln!("PB3 (channel 2) = {:.2}V", v);
 
         // toggle
         pwm_pin.toggle().unwrap();
+        let one_milli = now + 1.millis();
 
-        adc_sample::spawn_after(1.secs()).unwrap();
+        adc_sample::spawn_at(one_milli, one_milli).unwrap();
+
+        // log
+        if *cnt == 0 {
+            rprintln!("PB3 (channel 2) = {:.2}V", v);
+        }
     }
 }
