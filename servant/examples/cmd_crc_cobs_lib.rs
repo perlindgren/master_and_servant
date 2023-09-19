@@ -48,8 +48,10 @@ mod app {
 
     #[init()]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
-        ctx.device.WDT.mr.modify(|_r, c| c.wddis().set_bit());
-        ctx.device.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
+        let pac = ctx.device;
+
+        pac.WDT.mr.modify(|_r, c| c.wddis().set_bit());
+        pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
         rprintln!("reset - cmd_crc_cobs_lib");
@@ -60,8 +62,6 @@ mod app {
             rprint!(".");
         }
         rprintln!("init done");
-
-        let pac = ctx.device;
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
         // use internal rc oscillator for slow clock
