@@ -31,6 +31,7 @@
     "slck",
     "ssmarshal",
     "usart",
+    "wddis",
     "xtal"
   ]
 }

@@ -5,23 +5,47 @@
 - thumbv7em-none-eabihf
 
   `rustup target add thumbv7em-none-eabihf`
+
+## Target side
+
+```shell
+cargo embed --example <app>
+```
   
 ## Examples
 
-- `blinky_rtt`, just to see that flashing and rtt tracing is working. Bridge the jumper closest to the barrel connector.
+- `blinky`, just to see that flashing and rtt tracing is working.
 
-- `uart_cdc_echo`, simple echo off by one, can be used together with the `hello` example in the `master` crate.
+- `cmd_crc_cobs_lib`, simple echo off by one, can be used together with the `hello` example in the `master` crate.
 
   On the host side, run some terminal application to send characters.
 
-  Under linux: e.g.,
-  `minicom -b 9600 -D /dev/ttyACM0`
+  Under Linux/Windows, in the `master folder`:
 
-  Under Windows: e.g.,
-  `CoolTerm` connected to COM3 at 9600 8N1.
+  ```shell
+  cargo embed cmd_crc_cobs_lib
+  ```
 
-  Actual `tty`/`COM` port might vary.
+---
 
-- `uart_cdc_fast_echo`, as above but uses task priorities for better performance, delegating tracing to a low priority task.
+## Tooling
 
-- `cmd`, showcases ssmarshal based serialization, can be used together with the `cmd` example in the `master` crate.
+- [probe-rs](https://probe.rs/)
+
+  Install `probe-rs` and the `vscode` plugin for debugging.
+
+  ```shell
+  cargo embed <app>
+  ```
+
+  Or run in `vscode`.
+
+## Keybindings
+
+- `<CTRL-D>` for debug mode: Choose profile in dropdown.
+- `<F5>` for starting debugging. (Will compile, flash etc.)
+- `<Ctrl-B>` to build/check/clippy.
+
+- `.vscode`
+  - `tasks.json`, the build profiles.
+  - `launch.json`, the launch profiles and `probe-rs-debug` config, with RTT settings etc.

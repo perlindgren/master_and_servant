@@ -38,7 +38,7 @@ mod app {
         ctx.device.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
-        rprintln!("reset");
+        rprintln!("blinky");
         for _ in 0..10 {
             for _ in 0..4000_000 {
                 cortex_m::asm::nop();

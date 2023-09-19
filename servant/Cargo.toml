@@ -27,3 +27,13 @@ features = ["same70q21b-rt", "unproven", "reconfigurable-system-pins"]
 
 [dependencies.master_and_servant]
 path = "../"
+
+[profile.dev]
+opt-level = "s"
+lto = true
+
+[profile.release]
+opt-level = 2
+debug = true
+lto = true
+codegen-units = 1
