@@ -8,6 +8,7 @@
 //! Run on host: `cd master`
 //! cargo run --example cmd_crc_cobs_lib
 //!
+//! PA9/PA10 TX/RX
 #![no_std]
 #![no_main]
 
@@ -24,10 +25,7 @@ mod app {
     use hal::generics::events::EventHandler;
     use hal::pio::*;
     use hal::serial::uart::UartConfiguration;
-    use hal::serial::{
-        usart::{Event, Rx, Tx, Usart, Usart1},
-        ExtBpsU32,
-    };
+    use hal::serial::{uart::*, ExtBpsU32};
     use rtt_target::{rprint, rprintln, rtt_init_print};
 
     // Application dependencies
@@ -44,82 +42,71 @@ mod app {
 
     #[local]
     struct Local {
-        tx: Tx<Usart1>,
-        rx: Rx<Usart1>,
-        usart: Usart<Usart1>,
+        tx: Tx<Uart0>,
+        rx: Rx<Uart0>,
     }
 
     #[init()]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
+        ctx.device.WDT.mr.modify(|_r, c| c.wddis().set_bit());
+        ctx.device.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
+
         rtt_init_print!();
-        rprintln!("init");
+        rprintln!("reset - cmd_crc_cobs_lib");
+        for _ in 0..10 {
+            for _ in 0..4000_000 {
+                cortex_m::asm::nop();
+            }
+            rprint!(".");
+        }
+        rprintln!("init done");
+
         let pac = ctx.device;
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
-        let slck = clocks.slck.configure_external_normal();
-        let mainck = clocks.mainck.configure_external_normal(12.MHz()).unwrap();
-        let mut efc = Efc::new(pac.EFC, VddioLevel::V3);
+        // use internal rc oscillator for slow clock
+        let slck = clocks.slck.configure_internal();
+        // use external xtal as oscillator for main clock
+        let mainck = clocks.mainck.configure_external_normal(16.MHz()).unwrap();
         let (_hclk, mut mck) = HostClockController::new(clocks.hclk, clocks.mck)
             .configure(
                 &mainck,
-                &mut efc,
+                &mut Efc::new(pac.EFC, VddioLevel::V3),
                 HostClockConfig {
                     pres: HccPrescaler::Div1,
                     div: MckDivider::Div1,
                 },
             )
             .unwrap();
-        let _pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
+        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
 
         let banka = BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
-        let bankb = BankB::new(pac.PIOB, &mut mck, &slck, BankConfiguration::default());
 
-        // usart1
-        let miso = banka.pa21.into_peripheral(); // RXD1
-        let mosi = bankb.pb4.into_peripheral(); // TXD1
-        let clk = banka.pa23.into_peripheral(); // CKL1
-        let nss = banka.pa24.into_peripheral(); // RTS1?
-
-        // Create the top-level USART abstraction
-        let (handles, mut usart) = Usart::new_usart1(pac.USART1, (mosi, miso, clk, nss), &mut mck);
-
-        // consume the usart token and turn it into a uart
-        let uart = handles
-            .uart
-            .configure(&usart, &mck, UartConfiguration::default(9600.bps()))
-            .unwrap();
+        let tx = banka.pa10.into_peripheral();
+        let rx = banka.pa9.into_peripheral();
+        let mut uart = Uart::new_uart0(
+            pac.UART0,
+            (tx, rx),
+            UartConfiguration::default(115_200.bps()).mode(ChannelMode::LocalLoopback),
+            PeripheralClock::Other(&mut mck, &pck),
+        )
+        .unwrap();
 
         // Listen to an interrupt event.
-        // usart.listen_slice(&[Event::RxReady, Event::TxReady]); to listen also for TxReady
-        usart.listen_slice(&[Event::RxReady]);
+        uart.listen_slice(&[Event::RxReady]);
 
-        usart.enter_mode(&uart);
         let (tx, rx) = uart.split();
 
-        (Shared {}, Local { tx, rx, usart }, init::Monotonics())
+        (Shared {}, Local { tx, rx }, init::Monotonics())
     }
 
-    #[task(binds=USART1, local = [rx, usart], priority = 2)]
-    fn usart(ctx: usart::Context) {
-        use hal::serial::usart::Event::*;
-
-        let usart::LocalResources { rx, usart } = ctx.local;
-        for event in usart.events() {
-            match event {
-                RxReady => {
-                    let data = rx.read().unwrap();
-                    let _ = lowprio::spawn(data);
-                }
-                TxReady => {
-                    // uart.write(b'r');
-                }
-                TxEmpty => {
-                    // uart.write(b'e');
-                }
-                _ => {
-                    rprintln!("event {:?}", event);
-                    rx.clear_errors();
-                }
+    #[task(binds=UART0, local = [rx ], priority = 2)]
+    fn uart0(ctx: uart0::Context) {
+        let uart0::LocalResources { rx } = ctx.local;
+        loop {
+            match rx.read() {
+                Ok(data) => lowprio::spawn(data).unwrap(), // panics if buffer full
+                _ => break,
             }
         }
     }
