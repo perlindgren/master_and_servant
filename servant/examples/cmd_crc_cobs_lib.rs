@@ -68,6 +68,7 @@ mod app {
         let slck = clocks.slck.configure_internal();
         // use external xtal as oscillator for main clock
         let mainck = clocks.mainck.configure_external_normal(16.MHz()).unwrap();
+        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 3).unwrap();
         let (_hclk, mut mck) = HostClockController::new(clocks.hclk, clocks.mck)
             .configure(
                 &mainck,
@@ -78,7 +79,6 @@ mod app {
                 },
             )
             .unwrap();
-        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 1).unwrap();
 
         let banka = BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
 
@@ -87,7 +87,7 @@ mod app {
         let mut uart = Uart::new_uart0(
             pac.UART0,
             (tx, rx),
-            UartConfiguration::default(115_200.bps()).mode(ChannelMode::LocalLoopback),
+            UartConfiguration::default(9_600.bps()).mode(ChannelMode::Normal),
             PeripheralClock::Other(&mut mck, &pck),
         )
         .unwrap();

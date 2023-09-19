@@ -30,6 +30,7 @@
     "rtic",
     "slck",
     "ssmarshal",
-    "usart"
+    "usart",
+    "xtal"
   ]
 }
