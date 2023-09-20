@@ -31,10 +31,12 @@ mod app {
     // Application dependencies
     use core::mem::size_of;
     use corncobs::{max_encoded_len, ZERO};
-    use master_and_servant::{deserialize_crc_cobs, serialize_crc_cobs, Command, Response};
+    use master_and_servant::{
+        deserialize_crc_cobs, serialize_crc_cobs, EvState, Relay, Request, Response,
+    };
     use nb::block;
 
-    const IN_SIZE: usize = max_encoded_len(size_of::<Command>() + size_of::<u32>());
+    const IN_SIZE: usize = max_encoded_len(size_of::<Request>() + size_of::<u32>());
     const OUT_SIZE: usize = max_encoded_len(size_of::<Response>() + size_of::<u32>());
 
     #[shared]
@@ -55,13 +57,13 @@ mod app {
 
         rtt_init_print!();
         rprintln!("reset - cmd_crc_cobs_lib");
-        for _ in 0..10 {
-            for _ in 0..4000_000 {
+        for _ in 0..5 {
+            for _ in 0..1000_000 {
                 cortex_m::asm::nop();
             }
             rprint!(".");
         }
-        rprintln!("init done");
+        rprintln!("\ninit done");
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
         // use internal rc oscillator for slow clock
@@ -142,12 +144,38 @@ mod app {
             rprintln!("\n-- cobs packet received {:?} --", &in_buf[0..*index]);
             *index = 0;
 
-            match deserialize_crc_cobs::<Command>(in_buf) {
+            match deserialize_crc_cobs::<Request>(in_buf) {
                 Ok(cmd) => {
                     rprintln!("cmd {:?}", cmd);
                     let response = match cmd {
-                        Command::Set(_id, _par, _dev) => Response::SetOk,
-                        Command::Get(id, par, dev) => Response::Data(id, par, 42, dev),
+                        Request::Set {
+                            dev_id,
+                            pwm_hi_percentage,
+                            relay,
+                        } => {
+                            rprintln!(
+                                "dev_id {}, pwm {}, relay {:?}",
+                                dev_id,
+                                pwm_hi_percentage,
+                                relay,
+                            );
+                            Response::SetOk // or do we want to return status
+                        }
+                        Request::Get { dev_id } => {
+                            rprintln!("dev_id {}", dev_id);
+                            Response::Status {
+                                ev_state: EvState::Connected,
+                                pwm_hi_val: 3.3,
+                                pwm_lo_val: 0.0,
+                                pwm_hi_percentage: 50,
+                                relay: Relay::A,
+                                rcd_value: 1.0,
+                                current: 2.0,
+                                voltages: 3.0,
+                                energy: 4.0,
+                                billing_energy: 5.0,
+                            }
+                        }
                     };
                     rprintln!("response {:?}", response);
                     let to_write = serialize_crc_cobs(&response, out_buf);

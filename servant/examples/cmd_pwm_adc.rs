@@ -1,8 +1,18 @@
 //! Periodically reads the voltage of an AFEC0 channel.
+//! Receives and transmits commands
 #![no_std]
 #![no_main]
 
+use core::time::Duration;
+
 use panic_rtt_target as _;
+
+use hal::fugit::{Instant, Duration, RateExtU32};
+
+struct Config {
+    PwmDutyPercentage: u8, // 0..100 
+    
+}
 
 #[rtic::app(device = hal::pac, peripherals = true, dispatchers = [UART0])]
 mod app {
@@ -21,7 +31,10 @@ mod app {
     type Mono = DwtSystick<16_000_000>;
 
     #[shared]
-    struct Shared {}
+    struct Shared {
+        #[lock_free]
+        
+    }
 
     #[local]
     struct Local {

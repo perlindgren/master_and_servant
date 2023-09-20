@@ -3,31 +3,55 @@
 use serde_derive::{Deserialize, Serialize};
 
 // we could use new-type pattern here but let's keep it simple
-pub type Id = u32;
-pub type DevId = u32;
+pub type Id = u8;
+pub type DevId = u8;
 pub type Parameter = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
-pub enum Command {
-    Set(Id, Message, DevId),
-    Get(Id, Parameter, DevId),
+pub enum Relay {
+    A,
+    B,
+    C,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
-pub enum Message {
-    A,
-    B(u32),
-    C(f32), // we might consider "f16" but not sure it plays well with `ssmarshal`
+pub enum EvState {
+    NotConnected,
+    Connected,
+    Error,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[repr(C)]
+pub enum Request {
+    Set {
+        dev_id: DevId,
+        pwm_hi_percentage: u8, // 0..100
+        relay: Relay,
+    },
+    Get {
+        dev_id: DevId,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(C)]
 pub enum Response {
-    Data(Id, Parameter, u32, DevId),
+    Status {
+        ev_state: EvState,
+        pwm_hi_val: f32,
+        pwm_lo_val: f32,
+        pwm_hi_percentage: u8,
+        relay: Relay,
+        rcd_value: f32,
+        current: f32,
+        voltages: f32,
+        energy: f32,
+        billing_energy: f32,
+    },
     SetOk,
-    ParseError,
 }
 
 pub const CKSUM: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
