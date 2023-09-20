@@ -1,11 +1,14 @@
-//! Periodically blinks the board's LED2 (located next to the barrel connector) at ~1Hz.
-//! Log messages are sent using `rtt`
+//! blinky
 //!
-//! To run from terminal (in the `servant` folder).
-//!
-//! example for the "home_gnx"
+//! Run on target:
 //!
 //! cargo embed --example blinky
+//!
+//! Example for the "home_gnx" board
+//! Periodically blinks the board's LED (PA22) at ~1Hz.
+//! Log messages are sent using `rtt`.
+//! Uses the RTT peripheral for monotonic timer.
+//!
 #![no_std]
 #![no_main]
 

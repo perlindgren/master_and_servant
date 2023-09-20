@@ -1,4 +1,4 @@
-//! cmd
+//! cmd_crc_cobs_lib
 //!
 //! ssmarshal + serde + crc + cobs
 //!

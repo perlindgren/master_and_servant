@@ -1,4 +1,14 @@
-//! Periodically reads the voltage of an AFEC0 channel.
+//! adc
+//!
+//! Run on target:
+//!
+//! cargo embed --example adc
+//!
+//! Example for the "home_gnx" board.
+//! Periodically reads the voltage of an AFEC0 channel PB3.
+//! Logging over RTT.
+//! Uses DwtSystick as monotonic timer.
+//!
 #![no_std]
 #![no_main]
 
@@ -36,14 +46,14 @@ mod app {
         pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
-        rprintln!("reset - cmd_crc_cobs_lib");
+        rprintln!("reset - adc");
         for _ in 0..5 {
-            for _ in 0..4000_000 {
+            for _ in 0..1000_000 {
                 cortex_m::asm::nop();
             }
             rprintln!(".");
         }
-        rprintln!("init done");
+        rprintln!("\ninit done");
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
         // use internal rc oscillator for slow clock

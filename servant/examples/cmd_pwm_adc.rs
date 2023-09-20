@@ -1,3 +1,9 @@
+//! cmd_pwm_adc
+//!
+//! Run on target
+//!
+//! cargo embed --example cmd_pwm_adc --release
+//!
 //! Periodically reads the voltage of an AFEC0 channel.
 //! Receives and transmits commands
 #![no_std]
@@ -7,11 +13,10 @@ use core::time::Duration;
 
 use panic_rtt_target as _;
 
-use hal::fugit::{Instant, Duration, RateExtU32};
+use hal::fugit::{Duration, Instant, RateExtU32};
 
 struct Config {
-    PwmDutyPercentage: u8, // 0..100 
-    
+    PwmDutyPercentage: u8, // 0..100
 }
 
 #[rtic::app(device = hal::pac, peripherals = true, dispatchers = [UART0])]
@@ -32,8 +37,7 @@ mod app {
 
     #[shared]
     struct Shared {
-        #[lock_free]
-        
+        // #[lock_free]
     }
 
     #[local]
@@ -51,14 +55,14 @@ mod app {
         pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
-        rprintln!("reset - pwm_adc");
+        rprintln!("reset - cmd_pwm_adc");
         for _ in 0..5 {
             for _ in 0..1000_000 {
                 cortex_m::asm::nop();
             }
             rprintln!(".");
         }
-        rprintln!("init done");
+        rprintln!("\ninit done");
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
         // use internal rc oscillator for slow clock

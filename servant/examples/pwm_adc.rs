@@ -1,4 +1,13 @@
-//! Periodically reads the voltage of an AFEC0 channel.
+//! pwm_adc
+//!
+//! Run on target:
+//!
+//! cargo embed --example pwm_adc
+//!
+//! Example for the "home_gnx" board.
+//! Periodically toggles PWM pin PA0 and reads the voltage of an AFEC0 channel PB3.
+//! Logging over RTT.
+//! Uses DwtSystick as monotonic timer.
 #![no_std]
 #![no_main]
 
