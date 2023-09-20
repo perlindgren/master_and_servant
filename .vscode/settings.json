@@ -15,6 +15,7 @@
     "UTMI",
     "Vddio",
     "Xplained",
+    "afec",
     "atsamx",
     "bankb",
     "bitcast",
