@@ -15,6 +15,8 @@
 //!
 //! Together with PWM toggle and ADC reading.
 //!
+//! For tracing we split the RTT into channels in order to avoid global critical section.
+//!
 #![no_std]
 #![no_main]
 
@@ -32,7 +34,7 @@ mod app {
     use hal::efc::*;
     use hal::ehal::adc::OneShot;
     use hal::ehal::digital::v2::ToggleableOutputPin;
-    use hal::ehal::serial::{self, Read};
+    use hal::ehal::serial::Read;
     use hal::fugit::{Instant, RateExtU32};
     use hal::generics::events::EventHandler;
     use hal::pio::*;
@@ -76,7 +78,7 @@ mod app {
         pac.WDT.mr.modify(|_r, c| c.wddis().set_bit());
         pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
-        let mut channels = rtt_init!(
+        let channels = rtt_init!(
             up: {
                 0: {
                     size: 128
@@ -100,9 +102,9 @@ mod app {
             for _ in 0..1000_000 {
                 cortex_m::asm::nop();
             }
-            write!(rtt_0, ".");
+            write!(rtt_0, ".").ok();
         }
-        writeln!(rtt_0, "\ninit done");
+        writeln!(rtt_0, "\ninit done").ok();
 
         let clocks = Tokens::new((pac.PMC, pac.SUPC, pac.UTMI), &pac.WDT.into());
         // use internal rc oscillator for slow clock
@@ -212,7 +214,7 @@ mod app {
             in_buf,
             out_buf,
         } = ctx.local;
-        writeln!(rtt_1, "in_buf[{}]={}", index, data);
+        writeln!(rtt_1, "in_buf[{}]={}", index, data).ok();
         in_buf[*index] = data;
 
         // ensure index in range
@@ -226,12 +228,13 @@ mod app {
                 rtt_1,
                 "\n-- cobs packet received {:?} --",
                 &in_buf[0..*index]
-            );
+            )
+            .ok();
             *index = 0;
 
             match deserialize_crc_cobs::<Request>(in_buf) {
                 Ok(cmd) => {
-                    writeln!(rtt_1, "cmd {:?}", cmd);
+                    writeln!(rtt_1, "cmd {:?}", cmd).ok();
                     let response = match cmd {
                         Request::Set {
                             dev_id,
@@ -242,11 +245,12 @@ mod app {
                                 rtt_1,
                                 "dev_id {}, pwm {}, relay {:?}",
                                 dev_id, pwm_hi_percentage, relay,
-                            );
+                            )
+                            .ok();
                             Response::SetOk // or do we want to return status
                         }
                         Request::Get { dev_id } => {
-                            writeln!(rtt_1, "dev_id {}", dev_id);
+                            writeln!(rtt_1, "dev_id {}", dev_id).ok();
                             Response::Status {
                                 ev_state: EvState::Connected,
                                 pwm_hi_val: 3.3,
@@ -261,7 +265,7 @@ mod app {
                             }
                         }
                     };
-                    writeln!(rtt_1, "response {:?}", response);
+                    writeln!(rtt_1, "response {:?}", response).ok();
                     let to_write = serialize_crc_cobs(&response, out_buf);
                     use hal::ehal::serial::Write;
                     for byte in to_write {
@@ -270,7 +274,7 @@ mod app {
                 }
 
                 Err(err) => {
-                    writeln!(rtt_1, "ssmarshal err {:?}", err);
+                    writeln!(rtt_1, "ssmarshal err {:?}", err).ok();
                 }
             }
         }
@@ -299,7 +303,7 @@ mod app {
 
         // log
         if *cnt == 0 {
-            writeln!(rtt_2, "PB3 (channel 2) = {:.2}V", v);
+            writeln!(rtt_2, "PB3 (channel 2) = {:.2}V", v).ok();
         }
     }
 }
