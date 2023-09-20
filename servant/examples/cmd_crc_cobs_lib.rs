@@ -1,14 +1,17 @@
 //! cmd_crc_cobs_lib
 //!
-//! ssmarshal + serde + crc + cobs
-//!
 //! Run on target: `cd servant`
 //! cargo embed --example cmd_crc_cobs_lib --release
 //!
 //! Run on host: `cd master`
 //! cargo run --example cmd_crc_cobs_lib
 //!
-//! PA9/PA10 TX/RX
+//! Example for the "home_gnx" board.
+//! Demonstrates ssmarshal + serde + crc + cobs.
+//!
+//! Serial at 9500bps, over programmer or ftdi.
+//!     TX PA10
+//!     RX PA9
 #![no_std]
 #![no_main]
 

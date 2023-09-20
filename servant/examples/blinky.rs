@@ -4,7 +4,7 @@
 //!
 //! cargo embed --example blinky
 //!
-//! Example for the "home_gnx" board
+//! Example for the "home_gnx" board.
 //! Periodically blinks the board's LED (PA22) at ~1Hz.
 //! Log messages are sent using `rtt`.
 //! Uses the RTT peripheral for monotonic timer.
