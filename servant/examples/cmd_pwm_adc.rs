@@ -1,26 +1,27 @@
 //! cmd_pwm_adc
 //!
-//! Run on target
+//! Run on target: `cd servant`
+//! cargo embed --example cmd_pwm_adc--release
 //!
-//! cargo embed --example cmd_pwm_adc --release
+//! Run on host: `cd master`
+//! cargo run --example cmd_crc_cobs_lib
 //!
-//! Periodically reads the voltage of an AFEC0 channel.
-//! Receives and transmits commands
+//! Example for the "home_gnx" board.
+//! Demonstrates ssmarshal + serde + crc + cobs.
+//!
+//! Serial at 9600bps, over programmer or ftdi.
+//!     TX PA10
+//!     RX PA9
+//!
+//! Together with PWM toggle and ADC reading
 #![no_std]
 #![no_main]
 
-use core::time::Duration;
-
 use panic_rtt_target as _;
 
-use hal::fugit::{Duration, Instant, RateExtU32};
-
-struct Config {
-    PwmDutyPercentage: u8, // 0..100
-}
-
-#[rtic::app(device = hal::pac, peripherals = true, dispatchers = [UART0])]
+#[rtic::app(device = atsamx7x_hal::pac, peripherals = true, dispatchers = [IXC, I2SC0])]
 mod app {
+    // Backend dependencies
     use atsamx7x_hal as hal;
     use dwt_systick_monotonic::{DwtSystick, ExtU32};
     use hal::afec::*;
@@ -28,26 +29,40 @@ mod app {
     use hal::efc::*;
     use hal::ehal::adc::OneShot;
     use hal::ehal::digital::v2::ToggleableOutputPin;
+    use hal::ehal::serial::{Read, Write};
     use hal::fugit::{Instant, RateExtU32};
+    use hal::generics::events::EventHandler;
     use hal::pio::*;
-    use rtt_target::{rprintln, rtt_init_print};
+    use hal::serial::uart::UartConfiguration;
+    use hal::serial::{uart::*, ExtBpsU32};
+    use rtt_target::{rprint, rprintln, rtt_init_print};
+
+    // Application dependencies
+    use core::mem::size_of;
+    use corncobs::{max_encoded_len, ZERO};
+    use master_and_servant::{
+        deserialize_crc_cobs, serialize_crc_cobs, EvState, Relay, Request, Response,
+    };
+    use nb::block;
+
+    const IN_SIZE: usize = max_encoded_len(size_of::<Request>() + size_of::<u32>());
+    const OUT_SIZE: usize = max_encoded_len(size_of::<Response>() + size_of::<u32>());
 
     #[monotonic(binds = SysTick, default = true)]
     type Mono = DwtSystick<16_000_000>;
-
     #[shared]
-    struct Shared {
-        // #[lock_free]
-    }
+    struct Shared {}
 
     #[local]
     struct Local {
         afec: Afec<Afec0>,
         adc_pin: Pin<PB3, Input>,
         pwm_pin: Pin<PA0, Output>,
+        tx: Tx<Uart0>,
+        rx: Rx<Uart0>,
     }
 
-    #[init]
+    #[init()]
     fn init(mut ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         let pac = ctx.device;
 
@@ -55,12 +70,12 @@ mod app {
         pac.RSWDT.mr.modify(|_r, c| c.wddis().set_bit());
 
         rtt_init_print!();
-        rprintln!("reset - cmd_pwm_adc");
+        rprintln!("reset - cmd_crc_cobs_lib");
         for _ in 0..5 {
             for _ in 0..1000_000 {
                 cortex_m::asm::nop();
             }
-            rprintln!(".");
+            rprint!(".");
         }
         rprintln!("\ninit done");
 
@@ -69,7 +84,7 @@ mod app {
         let slck = clocks.slck.configure_internal();
         // use external xtal as oscillator for main clock
         let mainck = clocks.mainck.configure_external_normal(16.MHz()).unwrap();
-        let _pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 3).unwrap();
+        let pck: Pck<Pck4> = clocks.pcks.pck4.configure(&mainck, 3).unwrap();
         let (hclk, mut mck) = HostClockController::new(clocks.hclk, clocks.mck)
             .configure(
                 &mainck,
@@ -81,22 +96,38 @@ mod app {
             )
             .unwrap();
 
-        let banka = hal::pio::BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
-
+        let banka = BankA::new(pac.PIOA, &mut mck, &slck, BankConfiguration::default());
         let bankb = hal::pio::BankB::new(pac.PIOB, &mut mck, &slck, BankConfiguration::default());
 
+        // serial setup
+        let tx = banka.pa10.into_peripheral();
+        let rx = banka.pa9.into_peripheral();
+        let mut uart = Uart::new_uart0(
+            pac.UART0,
+            (tx, rx),
+            UartConfiguration::default(9_600.bps()).mode(ChannelMode::Normal),
+            PeripheralClock::Other(&mut mck, &pck),
+        )
+        .unwrap();
+
+        // pwm and adc setup
+        let afec = Afec::new_afec0(pac.AFEC0, &mut mck).unwrap();
+        let adc_pin = bankb.pb3.into_input(PullDir::PullUp);
+        let pwm_pin = banka.pa0.into_output(true);
+
+        // monotonic timer
         let mut mono = DwtSystick::new(
             &mut ctx.core.DCB,
             ctx.core.DWT,
             ctx.core.SYST,
             hclk.systick_freq().to_Hz(),
         );
-
         let now = mono.now();
 
-        let afec = Afec::new_afec0(pac.AFEC0, &mut mck).unwrap();
-        let adc_pin = bankb.pb3.into_input(PullDir::PullUp);
-        let pwm_pin = banka.pa0.into_output(true);
+        // Listen to an interrupt event.
+        uart.listen_slice(&[Event::RxReady]);
+
+        let (tx, rx) = uart.split();
 
         // spawn fist sample directly
         adc_sample::spawn_at(now, now).unwrap();
@@ -107,6 +138,8 @@ mod app {
                 afec,
                 adc_pin,
                 pwm_pin,
+                tx,
+                rx,
             },
             init::Monotonics(mono),
         )
@@ -117,7 +150,98 @@ mod app {
         loop {}
     }
 
-    #[task(local = [afec, pwm_pin, adc_pin, cnt:u32 = 0])]
+    #[task(binds=UART0, local = [rx ], priority = 3)]
+    fn uart0(ctx: uart0::Context) {
+        rprintln!("- uart 0 -");
+        let uart0::LocalResources { rx } = ctx.local;
+        loop {
+            match rx.read() {
+                Ok(data) => lowprio::spawn(data).unwrap(), // panics if buffer full
+                _ => break,
+            }
+        }
+    }
+
+    #[task(
+        priority = 1,
+        capacity = 100,
+        local = [
+            tx,
+            // locally initialized resources
+            index: usize = 0,
+            in_buf: [u8; IN_SIZE] = [0u8; IN_SIZE],
+            out_buf: [u8; OUT_SIZE] = [0u8; OUT_SIZE]
+        ]
+    )]
+    fn lowprio(ctx: lowprio::Context, data: u8) {
+        let lowprio::LocalResources {
+            tx,
+            index,
+            in_buf,
+            out_buf,
+        } = ctx.local;
+        rprint!("r{} {}", data, index);
+        in_buf[*index] = data;
+
+        // ensure index in range
+        if *index < IN_SIZE - 1 {
+            *index += 1;
+        }
+
+        // end of cobs frame
+        if data == ZERO {
+            rprintln!("\n-- cobs packet received {:?} --", &in_buf[0..*index]);
+            *index = 0;
+
+            match deserialize_crc_cobs::<Request>(in_buf) {
+                Ok(cmd) => {
+                    rprintln!("cmd {:?}", cmd);
+                    let response = match cmd {
+                        Request::Set {
+                            dev_id,
+                            pwm_hi_percentage,
+                            relay,
+                        } => {
+                            rprintln!(
+                                "dev_id {}, pwm {}, relay {:?}",
+                                dev_id,
+                                pwm_hi_percentage,
+                                relay,
+                            );
+                            Response::SetOk // or do we want to return status
+                        }
+                        Request::Get { dev_id } => {
+                            rprintln!("dev_id {}", dev_id);
+                            Response::Status {
+                                ev_state: EvState::Connected,
+                                pwm_hi_val: 3.3,
+                                pwm_lo_val: 0.0,
+                                pwm_hi_percentage: 50,
+                                relay: Relay::A,
+                                rcd_value: 1.0,
+                                current: 2.0,
+                                voltages: 3.0,
+                                energy: 4.0,
+                                billing_energy: 5.0,
+                            }
+                        }
+                    };
+                    rprintln!("response {:?}", response);
+                    let to_write = serialize_crc_cobs(&response, out_buf);
+                    for byte in to_write {
+                        block!(tx.write(*byte)).unwrap();
+                    }
+                }
+
+                Err(err) => {
+                    rprintln!("ssmarshal err {:?}", err);
+                }
+            }
+        }
+    }
+
+    // adc_sample task
+    #[task(priority = 2, local = [afec, pwm_pin, adc_pin, cnt:u32 = 0])]
     fn adc_sample(ctx: adc_sample::Context, now: Instant<u32, 1, 16_000_000>) {
         let adc_sample::LocalResources {
             afec,
@@ -132,7 +256,7 @@ mod app {
 
         // toggle
         pwm_pin.toggle().unwrap();
-        let one_milli = now + 100.millis();
+        let one_milli = now + 1.millis();
 
         adc_sample::spawn_at(one_milli, one_milli).unwrap();
 
