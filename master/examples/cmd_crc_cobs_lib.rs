@@ -32,12 +32,12 @@ fn main() -> Result<(), std::io::Error> {
         relay: Relay::B,
     };
     println!("request {:?}", cmd);
-    let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf)?;
+    let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf);
     println!("response {:?}", response);
 
     let cmd = Request::Get { dev_id: 3 };
     println!("request {:?}", cmd);
-    let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf)?;
+    let response = request(&cmd, &mut port, &mut out_buf, &mut in_buf);
     println!("response {:?}", response);
     Ok(())
 }

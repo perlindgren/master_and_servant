@@ -28,6 +28,16 @@
                             "dataFormat": "String", // Format RTT data as String data
                             "showTimestamps": false // Include host-side timestamps for every line of data transferred from the target RTT output
                         },
+                        {
+                            "channelNumber": 1,
+                            "dataFormat": "String", // Format RTT data as String data
+                            "showTimestamps": false // Include host-side timestamps for every line of data transferred from the target RTT output
+                        },
+                        {
+                            "channelNumber": 2,
+                            "dataFormat": "String", // Format RTT data as String data
+                            "showTimestamps": false // Include host-side timestamps for every line of data transferred from the target RTT output
+                        },
                     ],
                     // "svdFile": "./.vscode/nrf52840.svd"
                 }
@@ -63,7 +73,7 @@
                             "showTimestamps": false // Include host-side timestamps for every line of data transferred from the target RTT output
                         },
                         {
-                            "channelNumber": 1,
+                            "channelNumber": 2,
                             "dataFormat": "String", // Format RTT data as String data
                             "showTimestamps": false // Include host-side timestamps for every line of data transferred from the target RTT output
                         },
