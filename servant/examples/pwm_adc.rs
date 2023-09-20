@@ -124,7 +124,7 @@ mod app {
 
         // toggle
         pwm_pin.toggle().unwrap();
-        let one_milli = now + 100.millis();
+        let one_milli = now + 1.millis();
 
         adc_sample::spawn_at(one_milli, one_milli).unwrap();
 
